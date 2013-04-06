@@ -1,7 +1,7 @@
 varint
 ======
 
-A javascript implement varint encode/decode.
+A javascript implement of varint encode/decode.
 
 inspired by https://github.com/chrisdickinson/varint
 
