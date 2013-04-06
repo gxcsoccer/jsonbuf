@@ -12,54 +12,94 @@ var varint = require("./varint"),
 	6  -- false
 */
 exports.encode = function(input) {
-	return new Buffer(encode(input));
+	//return new Buffer(encode(input));
+	return encode(input);
 }
 
 function encode(input) {
 	var type = getType(input),
-		accum = [];
+		length = Buffer.byteLength("" + JSON.stringify(input)) * 2,
+		buf = new Buffer(length),
+		offset = 0,
+		tmp;
 
 	switch (type) {
 	case "number":
-		accum.push.apply(accum, varint.encode(0).toJSON());
-		accum.push.apply(accum, varint.encode(input).toJSON())
+		tmp = varint.encode(0);
+		tmp.copy(buf, offset);
+		offset += tmp.length;
+		tmp = varint.encode(input);
+		tmp.copy(buf, offset);
+		offset += tmp.length;
 		break;
 	case "string":
-		accum.push.apply(accum, varint.encode(1).toJSON());
-		accum.push.apply(accum, varint.encode(Buffer.byteLength(input)).toJSON());
-		accum.push.apply(accum, (new Buffer(input)).toJSON());
+		tmp = varint.encode(1);
+		tmp.copy(buf, offset);
+		offset += tmp.length;
+		var strLen = Buffer.byteLength(input);
+		tmp = varint.encode(strLen);
+		tmp.copy(buf, offset);
+		offset += tmp.length;
+		buf.write(input, offset);
+		offset += strLen;
 		break;
 	case "boolean":
-		accum.push.apply(accum, varint.encode(input ? 5 : 6).toJSON());
+		tmp = varint.encode(input ? 5 : 6);
+		tmp.copy(buf, offset);
+		offset += tmp.length;
 		break;
 	case "array":
-		accum.push.apply(accum, varint.encode(2).toJSON());
-		accum.push.apply(accum, varint.encode(input.length).toJSON());
+		tmp = varint.encode(2);
+		tmp.copy(buf, offset);
+		offset += tmp.length;
+		tmp = varint.encode(input.length);
+		tmp.copy(buf, offset);
+		offset += tmp.length;
+
 		input.forEach(function(item) {
-			accum.push.apply(accum, encode(item));
+			tmp = encode(item)
+			tmp.copy(buf, offset);
+			offset += tmp.length;
 		});
+
 		break;
 	case "object":
-		accum.push.apply(accum, varint.encode(3).toJSON());
-		var offset = accum.length,
-			i = 0;
+		tmp = varint.encode(3);
+		tmp.copy(buf, offset);
+		offset += tmp.length;
+
+		var props = []
 
 		for (var name in input) {
 			if (hasOwnProperty.call(input, name)) {
-				accum.push.apply(accum, encode(name));
-				accum.push.apply(accum, encode(input[name]));
-				i++;
+				props.push(name);
 			}
 		}
 
-		accum.splice.apply(accum, [offset, 0].concat(varint.encode(i).toJSON()));
+		tmp = varint.encode(props.length);
+		tmp.copy(buf, offset);
+		offset += tmp.length;
+
+		props.forEach(function(name) {
+			tmp = encode(name);
+			tmp.copy(buf, offset);
+			offset += tmp.length;
+
+			tmp = encode(input[name]);
+			tmp.copy(buf, offset);
+			offset += tmp.length;
+		});
+
+
 		break;
 	case "undefined":
-		accum.push.apply(accum, varint.encode(4).toJSON());
+		tmp = varint.encode(4);
+		tmp.copy(buf, offset);
+		offset += tmp.length;
 		break;
 	}
 
-	return accum;
+	return buf.slice(0, offset);
 }
 
 
@@ -104,7 +144,7 @@ function decode(buf, offset) {
 		var objLen = o.data;
 		offset = o.offset;
 		out = {};
-		for(var i = 0; i < objLen; i++) {
+		for (var i = 0; i < objLen; i++) {
 			o = decode(buf, offset);
 			var name = o.data;
 			offset = o.offset;
@@ -134,6 +174,7 @@ function decode(buf, offset) {
 /**
  * 获得输入的类型
  */
+
 function getType(input) {
 	var type = typeof input;
 	if (type === "object" && toString.call(input) === "[object Array]") {

@@ -70,3 +70,42 @@ buf = json2byte.encode(obj);
 console.log(buf.length);
 console.log(json2byte.decode(buf));
 console.log("---------------------------");
+
+
+console.time("JSON.stringify");
+
+for(var i = 0; i < 1000; i++) {
+	buf = new Buffer(JSON.stringify(obj));
+}
+
+console.timeEnd("JSON.stringify");
+
+console.time("json2byte");
+
+for(var i = 0; i < 1000; i++) {
+	buf = json2byte.encode(obj);
+}
+
+console.timeEnd("json2byte");
+
+
+
+
+
+buf = new Buffer(JSON.stringify(obj));
+console.time("JSON.stringify");
+
+for(var i = 0; i < 1000; i++) {
+	JSON.parse(buf.toString());
+}
+
+console.timeEnd("JSON.stringify");
+
+buf = json2byte.encode(obj);
+console.time("json2byte");
+
+for(var i = 0; i < 1000; i++) {
+	json2byte.decode(buf);
+}
+
+console.timeEnd("json2byte");
