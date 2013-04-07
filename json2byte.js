@@ -2,6 +2,11 @@ var varint = require("./varint"),
 	toString = Object.prototype.toString,
 	hasOwnProperty = Object.prototype.hasOwnProperty;
 
+var MSB = 0x80,
+	// 1000 0000
+	REST = 0x7F,
+	// 0111 1111
+	MSBALL = ~REST; // 1000 0000
 /* Supported Type
 	0  -- number 
 	1  -- string  
@@ -12,61 +17,43 @@ var varint = require("./varint"),
 	6  -- false
 */
 exports.encode = function(input) {
-	//return new Buffer(encode(input));
-	return encode(input);
+	var buf = new Buffer(Buffer.byteLength("" + JSON.stringify(input)) * 2);
+	encode(input, buf, 0);
+	return buf;
 }
 
-function encode(input) {
+function encode(input, buf, offset) {
+	buf = buf || new Buffer(Buffer.byteLength("" + JSON.stringify(input)) * 2);
+	offset = offset || 0;
 	var type = getType(input),
-		length = Buffer.byteLength("" + JSON.stringify(input)) * 2,
-		buf = new Buffer(length),
-		offset = 0,
 		tmp;
 
 	switch (type) {
 	case "number":
-		tmp = varint.encode(0);
-		tmp.copy(buf, offset);
-		offset += tmp.length;
-		tmp = varint.encode(input);
-		tmp.copy(buf, offset);
-		offset += tmp.length;
+		offset = writeVarInt(buf, 0, offset);
+		offset = writeVarInt(buf, input, offset);
 		break;
 	case "string":
-		tmp = varint.encode(1);
-		tmp.copy(buf, offset);
-		offset += tmp.length;
+		offset = writeVarInt(buf, 1, offset);
 		var strLen = Buffer.byteLength(input);
-		tmp = varint.encode(strLen);
-		tmp.copy(buf, offset);
-		offset += tmp.length;
+		offset = writeVarInt(buf, strLen, offset);
 		buf.write(input, offset);
 		offset += strLen;
 		break;
 	case "boolean":
-		tmp = varint.encode(input ? 5 : 6);
-		tmp.copy(buf, offset);
-		offset += tmp.length;
+		offset = writeVarInt(buf, input ? 5 : 6, offset);
 		break;
 	case "array":
-		tmp = varint.encode(2);
-		tmp.copy(buf, offset);
-		offset += tmp.length;
-		tmp = varint.encode(input.length);
-		tmp.copy(buf, offset);
-		offset += tmp.length;
+		offset = writeVarInt(buf, 2, offset);
+		offset = writeVarInt(buf, input.length, offset);
 
 		input.forEach(function(item) {
-			tmp = encode(item)
-			tmp.copy(buf, offset);
-			offset += tmp.length;
+			offset = encode(item, buf, offset);
 		});
 
 		break;
 	case "object":
-		tmp = varint.encode(3);
-		tmp.copy(buf, offset);
-		offset += tmp.length;
+		offset = writeVarInt(buf, 3, offset);
 
 		var props = []
 
@@ -76,30 +63,31 @@ function encode(input) {
 			}
 		}
 
-		tmp = varint.encode(props.length);
-		tmp.copy(buf, offset);
-		offset += tmp.length;
+		offset = writeVarInt(buf, props.length, offset);
 
 		props.forEach(function(name) {
-			tmp = encode(name);
-			tmp.copy(buf, offset);
-			offset += tmp.length;
-
-			tmp = encode(input[name]);
-			tmp.copy(buf, offset);
-			offset += tmp.length;
+			offset = encode(name, buf, offset);
+			offset = encode(input[name], buf, offset);
 		});
-
-
 		break;
 	case "undefined":
-		tmp = varint.encode(4);
-		tmp.copy(buf, offset);
-		offset += tmp.length;
+		offset = writeVarInt(buf, 4, offset);
 		break;
 	}
 
-	return buf.slice(0, offset);
+	return offset;
+}
+
+
+function writeVarInt(buf, num, offset) {
+	offset = offset || 0;
+
+	while (num & MSBALL) {
+		buf.writeInt8((num & 0xFF) | MSB, offset++);
+		num >>>= 7
+	}
+	buf.writeInt8(num, offset++);
+	return offset;
 }
 
 
