@@ -1,25 +1,10 @@
-varint
+jsonbuf
 ======
 
-A javascript implement of varint encode/decode.
+A component for encode & decode JSON data to binary.
 
-inspired by https://github.com/chrisdickinson/varint
+inspired by 
 
-# example
+https://developers.google.com/protocol-buffers/docs/encoding
+https://github.com/chrisdickinson/varint
 
-## encode & decode
-``` test.js
-var varint = require('varint');
-
-var buf = varint.encode(300);
-console.log(buf);
-console.log(varint.decode(buf));
-
-```
-output:
-
-```
-$ node test.js
-<Buffer ac 02>
-300
-```
