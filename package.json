@@ -1,0 +1,33 @@
+{
+  "name": "jsonbuf",
+  "version": "0.0.0",
+  "description": "A component for encoding & decoding JSON to binary.",
+  "main": "jsonbuf.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "benchmark": "~1.0.0",
+    "underscore": "~1.4.4",
+    "chai": "~1.5.0",
+    "mocha": "~1.9.0"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gxcsoccer/jsonbuf.git"
+  },
+  "keywords": [
+    "JSON",
+    "binary",
+    "rpc"
+  ],
+  "author": "Peter Gao <gxcsoccer@126.com>",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "gitHead": "aa8c6074266c23845ed97ae44a3af53c07b2411d"
+}

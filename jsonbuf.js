@@ -64,6 +64,8 @@ function encode(input, bw) {
 	case "undefined":
 		bw.writeVarInt(4);
 		break;
+	case "null":
+		bw.writeVarInt(7);
 	}
 }
 
@@ -104,11 +106,13 @@ function decode(br) {
 		out = undefined;
 		break;
 	case 5:
-		out = false;
+		out = true;
 		break;
 	case 6:
 		out = false;
 		break;
+	case 7:
+		out = null;
 	}
 
 	return out;
@@ -122,6 +126,9 @@ function getType(input) {
 	var type = typeof input;
 	if (type === "object" && toString.call(input) === "[object Array]") {
 		type = "array";
+	}
+	if (type === "object" && input == null) {
+		type = "null";
 	}
 
 	return type;
