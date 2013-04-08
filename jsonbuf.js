@@ -1,12 +1,8 @@
-var varint = require("./varint"),
+var BufferReader = require("./bufferReader"),
+	BufferWriter = require("./bufferWriter"),
 	toString = Object.prototype.toString,
 	hasOwnProperty = Object.prototype.hasOwnProperty;
 
-var MSB = 0x80,
-	// 1000 0000
-	REST = 0x7F,
-	// 0111 1111
-	MSBALL = ~REST; // 1000 0000
 /* Supported Type
 	0  -- number 
 	1  -- string  
@@ -17,43 +13,38 @@ var MSB = 0x80,
 	6  -- false
 */
 exports.encode = function(input) {
-	var buf = new Buffer(Buffer.byteLength("" + JSON.stringify(input)) * 2);
-	encode(input, buf, 0);
-	return buf;
+	var buf = new Buffer(Buffer.byteLength("" + JSON.stringify(input)) * 2),
+		bw = new BufferWriter(buf);
+
+	encode(input, bw);
+	return bw.toBuffer();
 }
 
-function encode(input, buf, offset) {
-	buf = buf || new Buffer(Buffer.byteLength("" + JSON.stringify(input)) * 2);
-	offset = offset || 0;
-	var type = getType(input),
-		tmp;
+function encode(input, bw) {
+	var type = getType(input);
 
 	switch (type) {
 	case "number":
-		offset = writeVarInt(buf, 0, offset);
-		offset = writeVarInt(buf, input, offset);
+		bw.writeVarInt(0);
+		bw.writeVarInt(input);
 		break;
 	case "string":
-		offset = writeVarInt(buf, 1, offset);
-		var strLen = Buffer.byteLength(input);
-		offset = writeVarInt(buf, strLen, offset);
-		buf.write(input, offset);
-		offset += strLen;
+		bw.writeVarInt(1);
+		bw.writeString(input);
 		break;
 	case "boolean":
-		offset = writeVarInt(buf, input ? 5 : 6, offset);
+		bw.writeVarInt(input ? 5 : 6);
 		break;
 	case "array":
-		offset = writeVarInt(buf, 2, offset);
-		offset = writeVarInt(buf, input.length, offset);
+		bw.writeVarInt(2);
+		bw.writeVarInt(input.length);
 
 		input.forEach(function(item) {
-			offset = encode(item, buf, offset);
+			encode(item, bw);
 		});
-
 		break;
 	case "object":
-		offset = writeVarInt(buf, 3, offset);
+		bw.writeVarInt(3);
 
 		var props = []
 
@@ -63,82 +54,49 @@ function encode(input, buf, offset) {
 			}
 		}
 
-		offset = writeVarInt(buf, props.length, offset);
+		bw.writeVarInt(props.length);
 
 		props.forEach(function(name) {
-			offset = encode(name, buf, offset);
-			offset = encode(input[name], buf, offset);
+			encode(name, bw);
+			encode(input[name], bw);
 		});
 		break;
 	case "undefined":
-		offset = writeVarInt(buf, 4, offset);
+		bw.writeVarInt(4);
 		break;
 	}
-
-	return offset;
 }
-
-
-function writeVarInt(buf, num, offset) {
-	offset = offset || 0;
-
-	while (num & MSBALL) {
-		buf.writeInt8((num & 0xFF) | MSB, offset++);
-		num >>>= 7
-	}
-	buf.writeInt8(num, offset++);
-	return offset;
-}
-
 
 exports.decode = function(buf) {
-	return decode(buf, 0).data;
+	var br = new BufferReader(buf);
+	return decode(br);
 };
 
-
-function decode(buf, offset) {
-	offset = offset || 0;
-	var o = varint.decode(buf, offset),
-		type = o.data,
+function decode(br) {
+	var type = br.readVarInt(),
 		out;
-	offset = o.offset;
 
 	switch (type) {
 	case 0:
-		o = varint.decode(buf, offset);
-		offset = o.offset;
-		out = o.data;
+		out = br.readVarInt();
 		break;
 	case 1:
-		o = varint.decode(buf, offset);
-		var strLen = o.data;
-		offset = o.offset;
-		out = buf.toString("utf-8", offset, offset + strLen);
-		offset += strLen;
+		out = br.readString(br.readVarInt());
 		break;
 	case 2:
-		o = varint.decode(buf, offset);
-		var arrLen = o.data;
-		offset = o.offset;
+		var arrLen = br.readVarInt();
 		out = [];
 		for (var i = 0; i < arrLen; i++) {
-			o = decode(buf, offset);
-			out.push(o.data);
-			offset = o.offset;
+			out.push(decode(br));
 		}
 		break;
 	case 3:
-		o = varint.decode(buf, offset);
-		var objLen = o.data;
-		offset = o.offset;
+		var objLen = br.readVarInt(),
+			name, value;
 		out = {};
 		for (var i = 0; i < objLen; i++) {
-			o = decode(buf, offset);
-			var name = o.data;
-			offset = o.offset;
-			o = decode(buf, offset);
-			var value = o.data;
-			offset = o.offset;
+			name = decode(br);
+			value = decode(br);
 			out[name] = value;
 		}
 		break;
@@ -153,10 +111,7 @@ function decode(buf, offset) {
 		break;
 	}
 
-	return {
-		data: out,
-		offset: offset
-	}
+	return out;
 }
 
 /**

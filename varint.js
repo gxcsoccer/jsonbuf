@@ -48,8 +48,5 @@ exports.decode = function(buf, offset) {
 		out |= accum[i] << (7 * i)
 	}
 
-	return {
-		data: out,
-		offset: offset
-	}
+	return out;
 };

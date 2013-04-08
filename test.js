@@ -1,4 +1,4 @@
-var json2byte = require("./json2byte"),
+var json2byte = require("./jsonbuf"),
 	buf;
 
 console.log("input: 2");
