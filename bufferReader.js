@@ -30,6 +30,10 @@ BufferReader.prototype.readString = function(byteLength) {
  * 读取一个varint
  */
 BufferReader.prototype.readVarInt = function() {
+	if(this.offset >= this.bufLength) {
+		return;
+	}
+
 	var byte, msb, out = 0,
 		i = 0;
 

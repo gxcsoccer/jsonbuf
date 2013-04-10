@@ -123,12 +123,24 @@ function decode(br) {
  */
 
 function getType(input) {
-	var type = typeof input;
-	if (type === "object" && toString.call(input) === "[object Array]") {
-		type = "array";
-	}
-	if (type === "object" && input == null) {
-		type = "null";
+	var type = typeof input,
+		desc = toString.call(input);
+
+	if(type === "object") {
+		switch(desc) {
+			case "[object Array]":
+				type = "array";
+				break;
+			case "[object Null]":
+				type = "null";
+				break;
+			case "[object Object]":
+				type = "object";
+				break;
+			default:
+				type = "unknown";
+				break;
+		}
 	}
 
 	return type;
